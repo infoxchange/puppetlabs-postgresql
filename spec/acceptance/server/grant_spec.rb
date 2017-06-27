@@ -321,7 +321,7 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
       it 'should grant select on a table to a user' do
         begin
           pp = pp_create_table + <<-EOS.unindent
-  
+
             postgresql::server::grant { 'grant select on test_tbl':
               privilege   => 'SELECT',
               object_type => 'TABLE',
@@ -334,7 +334,7 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
           EOS
 
           pp_revoke = pp_create_table + <<-EOS.unindent
-  
+
             postgresql::server::grant { 'revoke select on test_tbl':
               ensure      => absent,
               privilege   => 'SELECT',
@@ -346,17 +346,17 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
                                Postgresql::Server::Role[$user], ]
             }
           EOS
-  
+
           apply_manifest(pp_install, :catch_failures => true)
-  
+
           #postgres version
           result = shell('psql --version')
           version = result.stdout.match(%r{\s(\d\.\d)})[1]
-  
+
           if version >= '9.0'
             apply_manifest(pp, :catch_failures => true)
             apply_manifest(pp, :catch_changes => true)
-  
+
             ## Check that the privilege was granted to the user
             psql("-d #{db} --tuples-only --command=\"SELECT * FROM has_table_privilege('#{user}', 'test_tbl', 'SELECT')\"", user) do |r|
               expect(r.stdout).to match(/t/)
@@ -374,11 +374,11 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
           end
         end
       end
-  
+
       it 'should grant update on all tables to a user' do
         begin
           pp = pp_create_table + <<-EOS.unindent
-  
+
             postgresql::server::grant { 'grant update on all tables':
               privilege   => 'UPDATE',
               object_type => 'ALL TABLES IN SCHEMA',
@@ -391,7 +391,7 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
           EOS
 
           pp_revoke = pp_create_table + <<-EOS.unindent
-  
+
             postgresql::server::grant { 'revoke update on all tables':
               ensure      => absent,
               privilege   => 'UPDATE',
@@ -403,17 +403,17 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
                                Postgresql::Server::Role[$user], ]
             }
           EOS
-  
+
           apply_manifest(pp_install, :catch_failures => true)
-  
+
           #postgres version
           result = shell('psql --version')
           version = result.stdout.match(%r{\s(\d\.\d)})[1]
-  
+
           if version >= '9.0'
             apply_manifest(pp, :catch_failures => true)
             apply_manifest(pp, :catch_changes => true)
-  
+
             ## Check that all privileges were granted to the user
             psql("-d #{db} --command=\"SELECT table_name,privilege_type FROM information_schema.role_table_grants
                   WHERE grantee = '#{user}' AND table_schema = 'public'\"", user) do |r|
@@ -437,7 +437,7 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
       it 'should grant all on all tables to a user' do
         begin
           pp = pp_create_table + <<-EOS.unindent
-  
+
             postgresql::server::grant { 'grant all on all tables':
               privilege   => 'ALL',
               object_type => 'ALL TABLES IN SCHEMA',
@@ -450,7 +450,7 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
           EOS
 
           pp_revoke = pp_create_table + <<-EOS.unindent
-  
+
             postgresql::server::grant { 'revoke all on all tables':
               ensure      => absent,
               privilege   => 'ALL',
@@ -462,17 +462,17 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
                                Postgresql::Server::Role[$user], ]
             }
           EOS
-  
+
           apply_manifest(pp_install, :catch_failures => true)
-  
+
           #postgres version
           result = shell('psql --version')
           version = result.stdout.match(%r{\s(\d\.\d)})[1]
-  
+
           if version >= '9.0'
             apply_manifest(pp, :catch_failures => true)
             apply_manifest(pp, :catch_changes => true)
-  
+
             ## Check that all privileges were granted to the user
             psql("-d #{db} --tuples-only --command=\"SELECT table_name,count(privilege_type) FROM information_schema.role_table_grants
                   WHERE grantee = '#{user}' AND table_schema = 'public'

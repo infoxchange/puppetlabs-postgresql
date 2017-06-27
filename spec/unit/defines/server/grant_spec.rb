@@ -50,7 +50,7 @@ describe 'postgresql::server::grant', :type => :define do
     it { is_expected.to contain_postgresql_psql('grant:test').with(
       {
         'command' => /GRANT USAGE ON SEQUENCE "test" TO\s* "test"/m,
-        'unless'  => /SELECT [*] FROM has_sequence_privilege\('test',\s* 'test', 'USAGE'\) WHERE has_sequence_privilege = true/m,
+        'unless'  => /SELECT 1 WHERE has_sequence_privilege\('test',\s* 'test', 'USAGE'\) = true/m,
       }
     ) }
   end

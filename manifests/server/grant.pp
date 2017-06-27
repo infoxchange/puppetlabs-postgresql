@@ -14,16 +14,14 @@ define postgresql::server::grant (
 ) {
 
   case $ensure {
-    'present': {
+    default: {
+      # default is 'present'
       $sql_command = 'GRANT %s ON %s "%s" TO "%s"'
       $unless_is = true
     }
     'absent': {
       $sql_command = 'REVOKE %s ON %s "%s" FROM "%s"'
       $unless_is = false
-    }
-    default: {
-      fail("Unknown value for ensure '${ensure}'.")
     }
   }
 
@@ -254,25 +252,29 @@ define postgresql::server::grant (
         if $_privilege == 'ALL' or $_privilege == 'ALL PRIVILEGES' {
           # GRANT ALL
           $custom_unless = "SELECT 1 FROM
-             ( SELECT tablename FROM pg_catalog.pg_tables
-               WHERE schemaname = '${schema}' EXCEPT
-                SELECT table_name FROM
-                (SELECT table_name,count(privilege_type) FROM information_schema.role_table_grants
-                  WHERE grantee = '${role}' AND table_schema = '${schema}'
-                  AND privilege_type IN ('SELECT','UPDATE','INSERT','DELETE','TRIGGER','REFERENCES','TRUNCATE')
-                  GROUP BY table_name
-                ) AS P WHERE P.count >= 7
-             ) AS TBLS HAVING TBLS.count=0"
+             ( SELECT 1 FROM pg_catalog.pg_tables AS t,
+               (VALUES ('SELECT'), ('UPDATE'), ('INSERT'), ('DELETE'), ('TRIGGER'), ('REFERENCES'), ('TRUNCATE')) AS p(privilege_type)
+               WHERE t.schemaname = '${schema}'
+                 AND NOT EXISTS (
+                   SELECT 1 FROM information_schema.role_table_grants AS g
+                   WHERE g.grantee = '${role}'
+                     AND g.table_schema = '${schema}'
+                     AND g.privilege_type = p.privilege_type
+                   )
+             ) AS privs_missing HAVING privs_missing.count=0"
 
         } else {
           # GRANT $_privilege
           $custom_unless = "SELECT 1 FROM
-             ( SELECT tablename FROM pg_catalog.pg_tables
-               WHERE schemaname = '${schema}' EXCEPT
-                 SELECT table_name FROM
-                 information_schema.role_table_grants
-                 WHERE grantee = '${role}' AND table_schema = '${schema}' AND privilege_type = '${_privilege}'
-             ) AS TBLS HAVING TBLS.count=0"
+             ( SELECT 1 FROM pg_catalog.pg_tables AS t
+               WHERE t.schemaname = '${schema}'
+                 AND NOT EXISTS (
+                   SELECT 1 FROM information_schema.role_table_grants AS g
+                   WHERE g.grantee = '${role}'
+                     AND g.table_schema = '${schema}'
+                     AND g.privilege_type = '${_privilege}'
+                   )
+             ) AS tbls HAVING tbls.count=0"
         }
       } else {
         if $_privilege == 'ALL' or $_privilege == 'ALL PRIVILEGES' {
@@ -280,14 +282,14 @@ define postgresql::server::grant (
           $custom_unless = "SELECT 1 FROM
              ( SELECT table_name FROM information_schema.role_table_grants
                WHERE grantee = '${role}' AND table_schema ='${schema}'
-             ) AS TBLS HAVING TBLS.count=0"
+             ) AS tbls HAVING tbls.count=0"
         } else {
           # REVOKE $_privilege
           $custom_unless = "SELECT 1 FROM
              ( SELECT table_name FROM information_schema.role_table_grants
                WHERE grantee = '${role}' AND table_schema ='${schema}'
                AND privilege_type = '${_privilege}'
-             ) AS TBLS HAVING TBLS.count=0"
+             ) AS tbls HAVING tbls.count=0"
         }
       }
 
@@ -332,8 +334,8 @@ define postgresql::server::grant (
   $_unless = $unless_function ? {
       false    => undef,
       'custom' => $custom_unless,
-      default  => "SELECT * FROM ${unless_function}('${role}',
-                  '${_granted_object}', '${unless_privilege}') WHERE ${unless_function} = ${unless_is}",
+      default  => "SELECT 1 WHERE ${unless_function}('${role}',
+                  '${_granted_object}', '${unless_privilege}') = ${unless_is}",
   }
 
   $_onlyif = $onlyif_function ? {
