@@ -90,7 +90,10 @@ define postgresql::server::grant (
         '^ALL$','^ALL PRIVILEGES$' ])
       $unless_function = 'has_database_privilege'
       $on_db = $psql_db
-      $onlyif_function = undef
+      $onlyif_function = $ensure ? {
+        default  => undef,
+        'absent' =>  'role_exists',
+      }
     }
     'SCHEMA': {
       $unless_privilege = $_privilege ? {
@@ -339,6 +342,7 @@ define postgresql::server::grant (
   $_onlyif = $onlyif_function ? {
     'table_exists'    => "SELECT true FROM pg_tables WHERE tablename = '${_togrant_object}'",
     'language_exists' => "SELECT true from pg_language WHERE lanname = '${_togrant_object}'",
+    'role_exists'     => "SELECT 1 FROM pg_roles WHERE rolname = '${role}'",
     default           => undef,
   }
 

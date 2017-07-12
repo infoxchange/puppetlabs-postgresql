@@ -496,5 +496,26 @@ describe 'postgresql::server::grant:', :unless => UNSUPPORTED_PLATFORMS.include?
       end
     end
   end
+  context 'database' do
+    describe 'REVOKE ... ON DATABASE...' do
+      it 'should not fail on revoke connect from non-existant user' do
+        begin
+          apply_manifest(pp_setup, :catch_failures => true)
+          pp = pp_setup + <<-EOS.unindent
+            postgresql::server::grant { 'revoke connect on db from norole':
+              ensure      => absent,
+              privilege   => 'CONNECT',
+              object_type => 'DATABASE',
+              db          => '#{db}',
+              role        => '#{user}_does_not_exist',
+            }
+          EOS
+          apply_manifest(pp, :catch_changes => true)
+          apply_manifest(pp, :catch_failures => true)
+
+        end
+      end
+    end
+  end
   #####################
 end
